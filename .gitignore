@@ -1,0 +1,7 @@
+__pycahce__
+.DS_Store
+*.pyc
+.vscode
+model.pth
+dataset/
+data/
