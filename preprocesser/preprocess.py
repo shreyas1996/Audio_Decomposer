@@ -5,6 +5,7 @@ import concurrent.futures
 import soundfile as sf
 
 def compress_and_upload_audio(file_path, output_path, bit_rate='256k'):
+    print(f'Compressing {file_path} in {bit_rate} to {output_path}...')
     subprocess.run(['ffmpeg', '-i', file_path, '-ab', bit_rate, output_path])
     # subprocess.run(['ffmpeg', '-y', '-i', local_path, '-ar', str(new_sample_rate), '-ab', BIT_RATE, new_path])
 
@@ -49,9 +50,6 @@ def process_instrument(song_id, dataset_dir, song_dir_path, instrument, destinat
             chunk_id += 1
 
 def chunk_audio_files(root_dir, destination, chunk_length_sec=1, bit_rate='256k'):
-    # Define the subdirectories for each instrument
-    instruments = ['mixture', 'bass', 'drums', 'vocals', 'other']
-
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
 
         # Iterate over the train and test directories
@@ -65,16 +63,36 @@ def chunk_audio_files(root_dir, destination, chunk_length_sec=1, bit_rate='256k'
                     continue
 
                 # Iterate over each instrument
-                for instrument in instruments:
+                for instrument in INSTRUMENTS:
                 #    executor.submit(process_instrument, song_id, dataset, song_dir_path, instrument, destination, chunk_length_sec, bit_rate)
                    process_instrument(song_id, dataset, song_dir_path, instrument, destination, chunk_length_sec, bit_rate)
 
+def compress_chunked_flac_files(root_dir, bit_rate='256k'):
+   for dataset in ['train', 'test']:
+        dataset_dir = os.path.join(root_dir, dataset)
+        for instrument in INSTRUMENTS:
+            song_dir_path = os.path.join(dataset_dir, instrument)
+            if not os.path.isdir(song_dir_path):
+                continue
+            for song in os.listdir(song_dir_path):
+                song_path = os.path.join(song_dir_path, song)
+                if not os.path.isdir(song_path):
+                    continue
+                new_song_path = song_path.replace("tmp_", "")
+                compress_and_upload_audio(song_path, new_song_path, bit_rate)
+       
+
+# Constants
 MAX_WORKERS = 100
 BIT_RATE = '256k'
 BIT_RATE_LIST = ['128k', '192k', '256k', '320k']
 SAMPLE_RATE = 44100
 CHUNK_LENGTH_SEC = 1
+# Define the subdirectories for each instrument
+INSTRUMENTS = ['mixture', 'bass', 'drums', 'vocals', 'other']
+
 
 os.makedirs(f'data/{BIT_RATE}/flac', exist_ok=True)
 
-chunk_audio_files('dataset', f'data/{BIT_RATE}/flac', chunk_length_sec=CHUNK_LENGTH_SEC, bit_rate='256k')
+# chunk_audio_files('dataset', f'data/{BIT_RATE}/flac', chunk_length_sec=CHUNK_LENGTH_SEC, bit_rate='256k')
+compress_chunked_flac_files('data/256k/flac', bit_rate='256k')
