@@ -5,13 +5,17 @@ import concurrent.futures
 import soundfile as sf
 
 def compress_and_upload_audio(file_path, output_path, bit_rate='256k'):
-    print(f'Compressing {file_path} in {bit_rate} to {output_path}...')
-    subprocess.run(['ffmpeg', '-i', file_path, '-ab', bit_rate, output_path])
-    # subprocess.run(['ffmpeg', '-y', '-i', local_path, '-ar', str(new_sample_rate), '-ab', BIT_RATE, new_path])
+    try:
+        print(f'Compressing {file_path} in {bit_rate} to {output_path}...')
+        subprocess.run(['ffmpeg', '-i', file_path, '-ab', bit_rate, output_path])
+        # subprocess.run(['ffmpeg', '-y', '-i', local_path, '-ar', str(new_sample_rate), '-ab', BIT_RATE, new_path])
 
-    # Remove the temporary file
-    os.remove(file_path)
-    return "Done"
+        # Remove the temporary file
+        os.remove(file_path)
+        return "Done"
+    except Exception as e:
+        print(f'Error compressing {file_path} to {output_path}: {e}')
+        return e
 
 def process_instrument(song_id, dataset_dir, song_dir_path, instrument, destination, chunk_length_sec=1, bit_rate='256k'):
     audio_file_path = os.path.join(song_dir_path, f'{instrument}.wav')
@@ -76,9 +80,9 @@ def compress_chunked_flac_files(root_dir, bit_rate='256k'):
                     if not os.path.isdir(song_dir_path):
                         continue
                     for song in os.listdir(song_dir_path):
-                        song_path = os.path.join(song_dir_path, song)
-                        if not os.path.isdir(song_path):
+                        if not song.endswith('.flac'):
                             continue
+                        song_path = os.path.join(song_dir_path, song)
                         new_song_path = song_path.replace("tmp_", "")
                         executor.submit(compress_and_upload_audio, song_path, new_song_path, bit_rate)
        
