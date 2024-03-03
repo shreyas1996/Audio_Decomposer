@@ -1,7 +1,16 @@
-__pycahce__
+__pycache__
 .DS_Store
 *.pyc
 .vscode
 model.pth
 dataset/
 data/
+preprocessed_data/
+preprocessed/
+outputs/
+testing/
+notebooks/
+models/
+assets/
+old_code/
+*.zip
