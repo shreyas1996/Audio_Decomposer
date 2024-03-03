@@ -1,14 +1,16 @@
 import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.keras.models import Model
-# from sklearn.preprocessing import LabelEncoder
-# import numpy as np
+from tensorflow.keras import mixed_precision
 import json
-# import os
 import librosa
+import matplotlib.pyplot as plt
 
 print("CUDA LIST DEVICES") 
 print(tf.config.list_physical_devices('GPU'))
+
+# Set the policy
+mixed_precision.set_global_policy('mixed_float16')
 
 # Constants
 TRAIN_MAX_LENGTH = 27719408
@@ -16,7 +18,7 @@ TEST_MAX_LENGTH = 18979538
 SAMPLE_RATE = 44100
 SECONDS = 1    # 1seconds
 CHUNK_SIZE = SAMPLE_RATE * SECONDS
-BATCH_SIZE = 64
+BATCH_SIZE = 16
 WORKERS = 10
 EPOCHS = 10
 BUFFER_SIZE = 10000
@@ -109,23 +111,23 @@ class WaveUNet(tf.keras.Model):
 
         # Define the downsampling path (contracting path)
         self.downsampling_layers = [
+            self.conv_block(8, 5),
             self.conv_block(16, 5),
             self.conv_block(32, 5),
             self.conv_block(64, 5),
-            self.conv_block(128, 5),
-            self.conv_block(256, 5),
+            # self.conv_block(128, 5),
         ]
 
         # Define the bottleneck layer
-        self.bottleneck = self.conv_block(512, 5)
+        self.bottleneck = self.conv_block(128, 5)
 
         # Define the upsampling path (expansive path)
         self.upsampling_layers = [
-            self.upconv_block(256, 5),
-            self.upconv_block(128, 5),
+            # self.upconv_block(256, 5),
             self.upconv_block(64, 5),
             self.upconv_block(32, 5),
             self.upconv_block(16, 5),
+            self.upconv_block(8, 5),
         ]
 
         # Define the final output layer
@@ -317,8 +319,14 @@ print("Loading the model")
 # model = SourceSeparationModel(num_sources, num_channels, input_shape)
 model = WaveUNet(num_sources=num_sources)
 
-model.compile(optimizer=tf.keras.optimizers.Adam(0.0001),
-              loss=tf.keras.losses.MeanSquaredError())
+# Compile the model
+optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+optimizer = mixed_precision.LossScaleOptimizer(optimizer)
+
+loss_fn = tf.keras.losses.MeanSquaredError()
+
+model.compile(optimizer=optimizer,
+              loss=loss_fn)
 
 # Checkpointing
 model_dir = 'models/tf_v3'
@@ -332,12 +340,34 @@ model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
 
 # Training
 print("Training the model")
-model.fit(train_dataset, epochs=EPOCHS, validation_data=test_dataset, callbacks=[model_checkpoint_callback])
+train_history = model.fit(train_dataset, 
+                          epochs=EPOCHS, 
+                          steps_per_epoch=len(train_data_paths) // BATCH_SIZE,
+                          validation_data=test_dataset, 
+                          callbacks=[model_checkpoint_callback])
 
 # Save the entire model to a HDF5 file
 model.save(f'{model_dir}/model_v3.tf')
 
 # Load the best weights
-model.load_weights(checkpoint_filepath)
+# model.load_weights(checkpoint_filepath)
 
 model.summary()
+
+# Plot training & validation loss values
+plt.figure(figsize=(12, 6))
+plt.plot(train_history.history['loss'])
+plt.plot(train_history.history['val_loss'])
+plt.title('Model loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Validation'], loc='upper right')
+
+# Save the plot
+plt.savefig('assets/loss_plot.png')
+
+plt.show()
+
+# output = model(input)
+# output = tf.cast(output, tf.float32)
+# loss = loss_fn(target, output)
