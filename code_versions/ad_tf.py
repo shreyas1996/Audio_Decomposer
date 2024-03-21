@@ -25,10 +25,6 @@ BUFFER_SIZE = 10000
 
 all_labels = ['bass', 'drums', 'other', 'vocals']
 
-# label_encoder = LabelEncoder()
-# label_encoder.fit(all_labels)
-# encoded_labels = label_encoder.transform(all_labels)
-
 train_url = 'assets/train_files_list.json'
 test_url = 'assets/test_files_list.json'
 

@@ -35,6 +35,8 @@ def process_instrument(song_id, dataset_dir, song_dir_path, instrument, destinat
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         for i in range(0, waveform.size, frames_per_chunk):
             chunk = waveform[i:i+frames_per_chunk]
+            if chunk.size < frames_per_chunk:
+                continue
 
             # Create the output directory if it doesn't exist
             output_dir = os.path.join(destination, dataset_dir, instrument)
@@ -88,7 +90,7 @@ def compress_chunked_flac_files(root_dir, bit_rate='256k'):
        
 
 # Constants
-MAX_WORKERS = 100
+MAX_WORKERS = 200
 BIT_RATE = '256k'
 BIT_RATE_LIST = ['128k', '192k', '256k', '320k']
 SAMPLE_RATE = 44100
@@ -99,5 +101,5 @@ INSTRUMENTS = ['mixture', 'bass', 'drums', 'vocals', 'other']
 
 os.makedirs(f'data/{BIT_RATE}/flac', exist_ok=True)
 
-# chunk_audio_files('dataset', f'data/{BIT_RATE}/flac', chunk_length_sec=CHUNK_LENGTH_SEC, bit_rate='256k')
-compress_chunked_flac_files('data/256k/flac', bit_rate='256k')
+chunk_audio_files('dataset', f'data/{BIT_RATE}/flac', chunk_length_sec=CHUNK_LENGTH_SEC, bit_rate='256k')
+# compress_chunked_flac_files('data/256k/flac', bit_rate='256k')
